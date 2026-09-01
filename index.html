@@ -701,6 +701,9 @@ let tickTimer = null;
 const dispecerOnlyEls = ['#dispecerBarExtra','#btnNew','#btnSave','#btnSend','#btnPdf'].map(s=>$(s));
 $('#tabDispecer').onclick = ()=> setRole('dispecer');
 $('#tabTehnician').onclick = ()=> setRole('tehnician');
+const urlParams = new URLSearchParams(location.search);
+const forcedTech = urlParams.get('rol') === 'tehnician';
+if(forcedTech){ $('.roletabs').style.display = 'none'; }
 function setRole(role){
   currentRole = role;
   $('#tabDispecer').classList.toggle('active', role==='dispecer');
@@ -824,6 +827,7 @@ pads.padTehnic = initPad('padTehnic');
 reset();
 loadOrders();
 setInterval(loadOrders, 6000);
+if(forcedTech){ setRole('tehnician'); }
 </script>
 </body>
 </html>
