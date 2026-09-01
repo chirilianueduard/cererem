@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cereri de intervenție — Mentenanță</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+:root{
+  --ink:#131A22;
+  --ink-soft:#5A6875;
+  --paper:#E9EDF1;
+  --panel:#FFFFFF;
+  --line:#C6D0D9;
+  --line-soft:#E2E8ED;
+  --blue:#0F5C8C;
+  --blue-dark:#0A4067;
+  --hivis:#F2B705;
+  --red:#C0392B;
+  --green:#1E7A5A;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:var(--body);
+  font-size:14px;
+  line-height:1.45;
+  background-image:linear-gradient(var(--line-soft) 1px,transparent 1px),linear-gradient(90deg,var(--line-soft) 1px,transparent 1px);
+  background-size:28px 28px;
+}
+button,input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
+:focus-visible{outline:3px solid var(--hivis);outline-offset:2px}
+
+/* ---------- top bar ---------- */
+.bar{
+  position:sticky;top:0;z-index:30;
+  background:var(--ink);
+  border-bottom:5px solid var(--hivis);
+}
+.bar-in{max-width:1240px;margin:0 auto;padding:14px 20px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px;margin-right:auto}
+.brand h1{
+  font-family:var(--display);font-weight:700;font-size:27px;letter-spacing:.06em;
+  text-transform:uppercase;color:#fff;margin:0;
+}
+.brand span{font-family:var(--mono);font-size:11px;color:var(--hivis);letter-spacing:.14em;text-transform:uppercase}
+.ticket-chip{
+  display:flex;align-items:center;gap:8px;
+  background:var(--hivis);padding:5px 6px 5px 12px;border-radius:2px;
+}
+.ticket-chip label{margin:0;color:#5C4602;font-size:10px}
+.ticket-chip input{
+  font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink);
+  width:150px;padding:6px 9px;border:1px solid #C99A05;border-radius:2px;background:#FFF7DF;
+}
+.ticket-chip input:focus{background:#fff;border-color:var(--ink)}
+.btn{
+  border:0;border-radius:2px;padding:10px 16px;cursor:pointer;font-weight:600;
+  letter-spacing:.02em;transition:transform .08s ease,filter .15s ease;
+}
+.btn:active{transform:translateY(1px)}
+.btn:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent;color:#fff;border:1px solid #46525E}
+.btn-ghost:hover{background:#1F2933}
+.btn-main{background:var(--hivis);color:var(--ink)}
+.btn-blue{background:var(--blue);color:#fff}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1240px;margin:0 auto;padding:22px 20px 60px;display:grid;grid-template-columns:1fr 300px;gap:22px;align-items:start}
+@media(max-width:960px){.wrap{grid-template-columns:1fr}}
+
+.card{background:var(--panel);border:1px solid var(--line);border-radius:3px;margin-bottom:20px}
+.card-head{
+  display:flex;align-items:center;gap:10px;
+  padding:12px 18px;border-bottom:1px solid var(--line);background:#F7F9FB;
+}
+.card-head h2{
+  margin:0;font-family:var(--display);font-size:19px;font-weight:600;
+  text-transform:uppercase;letter-spacing:.07em;
+}
+.step{
+  font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:var(--blue);
+  width:22px;height:22px;display:grid;place-items:center;border-radius:2px;
+}
+.card-body{padding:18px}
+
+label{display:block;font-family:var(--mono);font-size:10.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:5px}
+input[type=text],input[type=tel],input[type=date],input[type=time],select,textarea{
+  width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:2px;background:#FCFDFE;
+}
+input:focus,select:focus,textarea:focus{border-color:var(--blue);background:#fff}
+textarea{resize:vertical;min-height:92px}
+.grid{display:grid;gap:14px}
+.g2{grid-template-columns:1fr 1fr}
+.g3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:640px){.g2,.g3{grid-template-columns:1fr}}
+
+/* priority pills */
+.pills{display:flex;gap:8px;flex-wrap:wrap}
+.pill{position:relative}
+.pill input{position:absolute;opacity:0;inset:0;cursor:pointer}
+.pill span{
+  display:block;padding:9px 15px;border:1px solid var(--line);border-radius:2px;cursor:pointer;
+  font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;background:#FCFDFE;
+}
+.pill input:checked + span{background:var(--ink);color:#fff;border-color:var(--ink)}
+.pill.urg input:checked + span{background:var(--red);border-color:var(--red)}
+.pill.pln input:checked + span{background:var(--green);border-color:var(--green)}
+
+/* tasks */
+table{width:100%;border-collapse:collapse}
+thead th{
+  font-family:var(--mono);font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);
+  text-align:left;padding:8px 8px;border-bottom:2px solid var(--ink);
+}
+tbody td{padding:6px 6px;border-bottom:1px solid var(--line-soft);vertical-align:middle}
+tbody td input{border-color:transparent;background:transparent}
+tbody td input:hover{border-color:var(--line)}
+.tnum{font-family:var(--mono);font-size:12px;color:#fff;background:var(--ink);width:26px;height:26px;display:grid;place-items:center;border-radius:2px}
+.del{background:transparent;border:1px solid var(--line);color:var(--red);width:28px;height:28px;border-radius:2px;cursor:pointer;font-weight:700}
+.del:hover{background:var(--red);color:#fff;border-color:var(--red)}
+.empty{padding:24px;text-align:center;color:var(--ink-soft);border:1px dashed var(--line);border-radius:2px}
+
+/* signatures */
+.sigs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media(max-width:640px){.sigs{grid-template-columns:1fr}}
+.sigbox{border:1px solid var(--line);border-radius:2px;overflow:hidden;background:#FCFDFE}
+.sigbox header{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#F2F5F8;border-bottom:1px solid var(--line)}
+.sigbox header b{font-family:var(--display);font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
+.sigbox .clear{background:none;border:0;color:var(--blue);cursor:pointer;font-size:12px;text-decoration:underline}
+canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:none;cursor:crosshair}
+.sigbox footer{padding:10px 12px;border-top:1px dashed var(--line)}
+
+/* archive */
+.arch{position:sticky;top:96px}
+.arch-item{
+  width:100%;text-align:left;background:#FCFDFE;border:1px solid var(--line);border-radius:2px;
+  padding:10px 12px;margin-bottom:8px;cursor:pointer;display:block;
+}
+.arch-item:hover{border-color:var(--blue);background:#fff}
+.arch-item b{display:block;font-family:var(--mono);font-size:11px;color:var(--blue)}
+.arch-item small{color:var(--ink-soft)}
+.toast{
+  position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(80px);
+  background:var(--ink);color:#fff;padding:12px 20px;border-left:5px solid var(--hivis);border-radius:2px;
+  font-size:13px;opacity:0;transition:.28s ease;z-index:60;
+}
+.toast.on{transform:translateX(-50%) translateY(0);opacity:1}
+
+/* print sheet (off-screen) */
+#sheetHost{position:fixed;left:-20000px;top:0}
+#sheet{width:794px;background:#fff;color:#131A22;padding:44px 46px;font-family:var(--body);font-size:12px}
+#sheet .ph{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:4px solid #131A22;padding-bottom:10px}
+#sheet .ph h1{font-family:var(--display);font-size:28px;margin:0;text-transform:uppercase;letter-spacing:.06em}
+#sheet .ph .no{font-family:var(--mono);font-size:13px;font-weight:600;background:#F2B705;padding:5px 10px}
+#sheet h3{font-family:var(--display);font-size:16px;text-transform:uppercase;letter-spacing:.09em;margin:22px 0 8px;padding-bottom:4px;border-bottom:1px solid #C6D0D9}
+#sheet .kv{display:grid;grid-template-columns:1fr 1fr;gap:6px 26px}
+#sheet .kv div{border-bottom:1px dotted #C6D0D9;padding:5px 0;display:flex;justify-content:space-between;gap:10px}
+#sheet .kv span{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#5A6875}
+#sheet .kv b{font-weight:600}
+#sheet .desc{border:1px solid #C6D0D9;padding:10px;min-height:56px;white-space:pre-wrap}
+#sheet table{width:100%;border-collapse:collapse;margin-top:4px}
+#sheet th{background:#131A22;color:#fff;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:7px 8px;text-align:left}
+#sheet td{border:1px solid #C6D0D9;padding:8px;font-size:12px}
+#sheet td.fill{background:#FFFBEC;border-color:#131A22}
+#sheet .tblnote{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#5A6875;margin-bottom:5px}
+#sheet .obs{border:1px solid #131A22;padding:10px 12px;min-height:150px;white-space:pre-wrap}
+#sheet .lines div{border-bottom:1px solid #D8E0E6;height:26px}
+#sheet .sg{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:24px}
+#sheet .sg .b{border:1px solid #C6D0D9;height:118px;display:flex;align-items:center;justify-content:center;background:#fff}
+#sheet .sg img{max-height:104px;max-width:96%}
+#sheet .sg p{margin:6px 0 0;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#5A6875}
+#sheet .sg strong{display:block;font-size:13px;color:#131A22;margin-top:3px;letter-spacing:0;text-transform:none;font-family:var(--body)}
+#sheet .foot{margin-top:26px;border-top:1px solid #C6D0D9;padding-top:8px;font-family:var(--mono);font-size:9px;color:#5A6875;display:flex;justify-content:space-between}
+.hint{font-size:11.5px;color:var(--ink-soft);margin:0 0 14px}
+
+/* ---------- role toggle ---------- */
+.roletabs{display:flex;gap:6px}
+.roletab{background:transparent;color:#fff;border:1px solid #46525E;padding:9px 15px;border-radius:2px;cursor:pointer;font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.roletab.active{background:var(--hivis);color:var(--ink);border-color:var(--hivis)}
+
+/* ---------- status badges ---------- */
+.badge{display:inline-block;padding:4px 9px;border-radius:2px;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;font-weight:600}
+.badge.st-noua{background:#E9EDF1;color:var(--ink-soft);border:1px solid var(--line)}
+.badge.st-trimisa{background:var(--blue);color:#fff}
+.badge.st-lucru{background:var(--hivis);color:#5C4602}
+.badge.st-finala{background:var(--green);color:#fff}
+
+/* ---------- technician view ---------- */
+.techwrap{max-width:640px;margin:0 auto;padding:22px 20px 60px}
+.techcard{background:var(--panel);border:1px solid var(--line);border-radius:3px;padding:14px 16px;margin-bottom:10px;cursor:pointer}
+.techcard:hover{border-color:var(--blue)}
+.techcard .row1{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:6px}
+.techcard b{font-family:var(--display);font-size:18px;letter-spacing:.02em}
+.techcard small{color:var(--ink-soft)}
+.techback{background:none;border:0;color:var(--blue);cursor:pointer;font-weight:600;padding:6px 0;margin-bottom:14px;font-size:13px}
+.techtasks{list-style:none;margin:0;padding:0}
+.techtasks li{border-bottom:1px solid var(--line-soft);padding:10px 2px}
+.techtasks li:last-child{border-bottom:0}
+.techtasks b{display:block;font-size:14px}
+.techtasks small{color:var(--ink-soft)}
+.timerbig{font-family:var(--mono);font-weight:600;font-size:48px;text-align:center;padding:18px 0 6px;letter-spacing:.02em}
+.timerlabel{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px}
+.btn-start{background:var(--green);color:#fff}
+.btn-stop{background:var(--red);color:#fff}
+.btn-block{width:100%;padding:14px;font-size:15px;text-align:center}
+.persrow{display:flex;align-items:center;gap:10px;justify-content:center;margin-bottom:14px}
+.persrow input{width:70px;text-align:center;padding:9px}
+.execbox{border:1px solid var(--line);border-radius:2px;padding:14px;margin-top:16px;background:#F7F9FB}
+.execbox .kv2{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
+.execbox .kv2 span{color:var(--ink-soft)}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar-in">
+    <div class="brand">
+      <h1>Cereri de intervenție</h1>
+      <span>Mentenanță</span>
+    </div>
+    <div class="roletabs">
+      <button class="roletab active" id="tabDispecer">Dispecer</button>
+      <button class="roletab" id="tabTehnician">Tehnician</button>
+    </div>
+    <div class="ticket-chip" id="dispecerBarExtra"><label for="ticketInput">Seria</label><input id="ticketInput" type="text" placeholder="ex. 0042/2026"></div>
+    <button class="btn btn-ghost" id="btnNew">Cerere nouă</button>
+    <button class="btn btn-blue" id="btnSave">Salvează</button>
+    <button class="btn btn-main" id="btnSend">Trimite tehnicianului</button>
+    <button class="btn btn-blue" id="btnPdf">Export PDF</button>
+  </div>
+</div>
+
+<div class="wrap" id="viewDispecer">
+  <div>
+
+    <!-- 1. CEREREA CHIRIAȘULUI -->
+    <section class="card">
+      <div class="card-head"><div class="step">1</div><h2>Cererea chiriașului</h2></div>
+      <div class="card-body">
+        <div class="grid g3" style="margin-bottom:14px">
+          <div><label for="magazin">Magazin / spațiu</label><input type="text" id="magazin" placeholder="ex. Zara, unit 128"></div>
+          <div><label for="nivel">Nivel</label>
+            <select id="nivel">
+              <option>Demisol</option><option selected>Parter</option><option>Etaj 1</option>
+              <option>Etaj 2</option><option>Etaj 3</option><option>Zonă tehnică</option><option>Exterior</option>
+            </select>
+          </div>
+          <div><label for="contact">Persoană de contact</label><input type="text" id="contact" placeholder="Nume și funcție"></div>
+        </div>
+        <div style="margin-bottom:14px">
+          <label>Tip lucrare <span style="text-transform:none;letter-spacing:0">(poți bifa mai multe)</span></label>
+          <div class="pills" id="tipuri">
+            <label class="pill"><input type="checkbox" value="Electric"><span>Electric</span></label>
+            <label class="pill"><input type="checkbox" value="Sanitar"><span>Sanitar</span></label>
+            <label class="pill"><input type="checkbox" value="HVAC / climatizare"><span>HVAC</span></label>
+            <label class="pill"><input type="checkbox" value="Construcții / amenajare"><span>Construcții</span></label>
+            <label class="pill"><input type="checkbox" value="Rețea / IT"><span>Rețea / IT</span></label>
+            <label class="pill"><input type="checkbox" value="Curățenie tehnică"><span>Curățenie tehnică</span></label>
+            <label class="pill"><input type="checkbox" value="Altele"><span>Altele</span></label>
+          </div>
+        </div>
+        <div class="grid g3" style="margin-bottom:14px">
+          <div><label for="telefon">Telefon</label><input type="tel" id="telefon" placeholder="07xx xxx xxx"></div>
+          <div class="grid g2" style="gap:10px">
+            <div><label for="data">Data cererii</label><input type="date" id="data"></div>
+            <div><label for="ora">Ora cererii</label><input type="time" id="ora"></div>
+          </div>
+          <div class="grid g2" style="gap:10px">
+            <div><label for="dataStart">Data începerii</label><input type="date" id="dataStart"></div>
+            <div><label for="oraStart">Ora începerii</label><input type="time" id="oraStart"></div>
+          </div>
+        </div>
+        <p class="hint">„Data / ora începerii" = intervalul în care echipa are acces în magazin.</p>
+        <div style="margin-bottom:14px">
+          <label>Prioritate</label>
+          <div class="pills">
+            <label class="pill urg"><input type="radio" name="prio" value="Urgent"><span>Urgent</span></label>
+            <label class="pill"><input type="radio" name="prio" value="Normal" checked><span>Normal</span></label>
+            <label class="pill pln"><input type="radio" name="prio" value="Planificat"><span>Planificat</span></label>
+          </div>
+        </div>
+        <div>
+          <label for="nevoie">Pentru ce este nevoia (descrierea chiriașului)</label>
+          <textarea id="nevoie" placeholder="ex. Nu funcționează priza de lângă casa de marcat 2 și curge apă la chiuveta din depozit."></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. TASKURI -->
+    <section class="card">
+      <div class="card-head"><div class="step">2</div><h2>Taskuri pentru echipa de mentenanță</h2>
+        <button class="btn btn-blue" id="btnAddTask" style="margin-left:auto;padding:7px 13px">+ Adaugă task</button>
+      </div>
+      <div class="card-body">
+        <p class="hint">Împarte cererea în lucrări concrete. Fiecare rând ajunge ca linie separată în PDF.</p>
+        <div id="taskWrap"></div>
+      </div>
+    </section>
+
+    <!-- 3. OBSERVATII -->
+    <section class="card">
+      <div class="card-head"><div class="step">3</div><h2>Observații echipă mentenanță</h2></div>
+      <div class="card-body">
+        <p class="hint">Lasă gol dacă vrei ca echipa să scrie de mână — în PDF apare un chenar cu linii.</p>
+        <textarea id="observatii" placeholder="Se completează de către tehnician la finalizarea lucrării…"></textarea>
+      </div>
+    </section>
+
+    <!-- 4. SEMNATURI -->
+    <section class="card">
+      <div class="card-head"><div class="step">4</div><h2>Semnături</h2></div>
+      <div class="card-body">
+        <div class="sigs">
+          <div class="sigbox">
+            <header><b>Chiriaș</b><button class="clear" data-clear="padChirias">Șterge</button></header>
+            <canvas class="pad" id="padChirias"></canvas>
+            <footer><label for="numeChirias">Nume în clar</label><input type="text" id="numeChirias" placeholder="Nume și prenume"></footer>
+          </div>
+          <div class="sigbox">
+            <header><b>Mentenanță</b><button class="clear" data-clear="padTehnic">Șterge</button></header>
+            <canvas class="pad" id="padTehnic"></canvas>
+            <footer><label for="numeTehnic">Nume tehnician</label><input type="text" id="numeTehnic" placeholder="Nume și prenume"></footer>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ARHIVA -->
+  <aside class="card arch">
+    <div class="card-head"><h2>Arhivă cereri</h2></div>
+    <div class="card-body" id="archList"></div>
+  </aside>
+</div>
+
+<div class="techwrap" id="viewTehnician" style="display:none">
+  <div id="techList"></div>
+  <div id="techDetail" style="display:none"></div>
+</div>
+
+<div id="sheetHost"><div id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const STORE_KEY = 'maintenance:orders';
+let orders = [];
+let currentId = null;
+
+/* ---------- tasks ---------- */
+function taskRow(t = {desc:'',exec:'',term:''}){
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><div class="tnum"></div></td>
+    <td><input type="text" class="t-desc" placeholder="Descriere lucrare"></td>
+    <td><input type="text" class="t-exec" placeholder="Electrician / firmă"></td>
+    <td><input type="text" class="t-term" placeholder="ex. 20.08, ora 9"></td>
+    <td><button class="del" title="Șterge rândul">×</button></td>`;
+  tr.querySelector('.t-desc').value = t.desc;
+  tr.querySelector('.t-exec').value = t.exec;
+  tr.querySelector('.t-term').value = t.term;
+  tr.querySelector('.del').onclick = () => { tr.remove(); renumber(); };
+  return tr;
+}
+function ensureTable(){
+  let tb = $('#taskBody');
+  if(!tb){
+    $('#taskWrap').innerHTML = `<table><thead><tr>
+      <th style="width:34px">#</th><th>Task</th><th style="width:22%">Alocat</th><th style="width:20%">Termen</th><th style="width:40px"></th>
+      </tr></thead><tbody id="taskBody"></tbody></table>`;
+    tb = $('#taskBody');
+  }
+  return tb;
+}
+function addTask(t){ ensureTable().appendChild(taskRow(t)); renumber(); }
+function renumber(){
+  const rows = document.querySelectorAll('#taskBody tr');
+  rows.forEach((r,i)=> r.querySelector('.tnum').textContent = i+1);
+  if(!rows.length) $('#taskWrap').innerHTML = `<div class="empty">Niciun task încă. Apasă „+ Adaugă task”.</div>`;
+}
+function getTasks(){
+  return [...document.querySelectorAll('#taskBody tr')].map(r=>({
+    desc:r.querySelector('.t-desc').value.trim(),
+    exec:r.querySelector('.t-exec').value.trim(),
+    term:r.querySelector('.t-term').value.trim()
+  })).filter(t=>t.desc||t.exec||t.term);
+}
+$('#btnAddTask').onclick = ()=> addTask();
+
+/* ---------- signature pads ---------- */
+function initPad(id){
+  const c = $('#'+id), ctx = c.getContext('2d');
+  let drawing = false, empty = true;
+  function size(){
+    const r = c.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+    const data = empty ? null : c.toDataURL();
+    c.width = r.width*dpr; c.height = r.height*dpr;
+    ctx.scale(dpr,dpr);
+    ctx.lineWidth = 2.2; ctx.lineCap='round'; ctx.lineJoin='round'; ctx.strokeStyle='#131A22';
+    if(data){ const img=new Image(); img.onload=()=>ctx.drawImage(img,0,0,r.width,r.height); img.src=data; }
+  }
+  const pos = e => { const r=c.getBoundingClientRect(); return [e.clientX-r.left, e.clientY-r.top]; };
+  c.addEventListener('pointerdown', e=>{ drawing=true; empty=false; c.setPointerCapture(e.pointerId); const[x,y]=pos(e); ctx.beginPath(); ctx.moveTo(x,y); });
+  c.addEventListener('pointermove', e=>{ if(!drawing)return; const[x,y]=pos(e); ctx.lineTo(x,y); ctx.stroke(); });
+  c.addEventListener('pointerup', ()=> drawing=false);
+  c.addEventListener('pointerleave', ()=> drawing=false);
+  window.addEventListener('resize', size);
+  setTimeout(size,60);
+  return {
+    clear(){ ctx.clearRect(0,0,c.width,c.height); empty=true; },
+    isEmpty(){ return empty; },
+    data(){ return empty ? '' : c.toDataURL('image/png'); },
+    load(d){ if(!d){this.clear();return;} const img=new Image(); img.onload=()=>{ const r=c.getBoundingClientRect(); ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,r.width,r.height); empty=false; }; img.src=d; }
+  };
+}
+const pads = { padChirias:null, padTehnic:null };
+document.querySelectorAll('[data-clear]').forEach(b=> b.onclick = ()=> pads[b.dataset.clear].clear());
+
+/* ---------- form state ---------- */
+function getTipuri(){
+  return [...document.querySelectorAll('#tipuri input:checked')].map(c=>c.value);
+}
+function setTipuri(list){
+  const set = new Set(list||[]);
+  document.querySelectorAll('#tipuri input').forEach(c=> c.checked = set.has(c.value));
+}
+function collect(){
+  return {
+    id: currentId || crypto.randomUUID(),
+    ticket: $('#ticketInput').value.trim(),
+    magazin: $('#magazin').value.trim(),
+    nivel: $('#nivel').value,
+    tipuri: getTipuri(),
+    contact: $('#contact').value.trim(),
+    telefon: $('#telefon').value.trim(),
+    data: $('#data').value,
+    ora: $('#ora').value,
+    dataStart: $('#dataStart').value,
+    oraStart: $('#oraStart').value,
+    prio: document.querySelector('input[name=prio]:checked').value,
+    nevoie: $('#nevoie').value.trim(),
+    tasks: getTasks(),
+    observatii: $('#observatii').value.trim(),
+    numeChirias: $('#numeChirias').value.trim(),
+    numeTehnic: $('#numeTehnic').value.trim(),
+    semnChirias: pads.padChirias.data(),
+    semnTehnic: pads.padTehnic.data(),
+    savedAt: new Date().toISOString(),
+    status: (currentOrderRef && currentOrderRef.status) || 'nouă',
+    nrPersoane: (currentOrderRef && currentOrderRef.nrPersoane) || '',
+    lucruStart: (currentOrderRef && currentOrderRef.lucruStart) || '',
+    lucruStop: (currentOrderRef && currentOrderRef.lucruStop) || '',
+    durataSec: (currentOrderRef && currentOrderRef.durataSec) || 0
+  };
+}
+let currentOrderRef = null;
+function load(o){
+  currentOrderRef = o;
+  currentId = o.id; $('#ticketInput').value = o.ticket||'';
+  $('#magazin').value=o.magazin||''; $('#nivel').value=o.nivel||'Parter';
+  setTipuri(o.tipuri || (o.tip ? [o.tip] : []));
+  $('#contact').value=o.contact||''; $('#telefon').value=o.telefon||'';
+  $('#data').value=o.data||''; $('#ora').value=o.ora||'';
+  $('#dataStart').value=o.dataStart||''; $('#oraStart').value=o.oraStart||'';
+  const r = document.querySelector(`input[name=prio][value="${o.prio||'Normal'}"]`); if(r) r.checked = true;
+  $('#nevoie').value=o.nevoie||''; $('#observatii').value=o.observatii||'';
+  $('#numeChirias').value=o.numeChirias||''; $('#numeTehnic').value=o.numeTehnic||'';
+  $('#taskWrap').innerHTML=''; (o.tasks&&o.tasks.length ? o.tasks : []).forEach(addTask); renumber();
+  pads.padChirias.load(o.semnChirias); pads.padTehnic.load(o.semnTehnic);
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function reset(){
+  currentId = null; currentOrderRef = null;
+  $('#ticketInput').value = '';
+  ['magazin','contact','telefon','nevoie','observatii','numeChirias','numeTehnic','dataStart','oraStart'].forEach(i=>$('#'+i).value='');
+  setTipuri([]);
+  const now = new Date();
+  $('#data').value = now.toISOString().slice(0,10);
+  $('#ora').value = now.toTimeString().slice(0,5);
+  $('#taskWrap').innerHTML=''; addTask(); addTask();
+  pads.padChirias.clear(); pads.padTehnic.clear();
+}
+$('#btnNew').onclick = ()=>{ reset(); toast('Cerere nouă pregătită'); };
+
+/* ---------- storage ---------- */
+async function loadOrders(){
+  try{
+    const r = await window.storage.get(STORE_KEY, true);
+    orders = r ? JSON.parse(r.value) : [];
+  }catch(e){ orders = []; }
+  renderArchive();
+  if(currentRole==='tehnician'){ renderTechList(); if(openTechId) renderTechDetail(openTechId); }
+}
+async function saveOrders(){
+  try{ await window.storage.set(STORE_KEY, JSON.stringify(orders), true); return true; }
+  catch(e){ return false; }
+}
+$('#btnSave').onclick = async ()=>{
+  const o = collect();
+  if(!o.magazin){ toast('Completează magazinul înainte de salvare'); $('#magazin').focus(); return; }
+  const i = orders.findIndex(x=>x.id===o.id);
+  if(i>-1) orders[i]=o; else orders.unshift(o);
+  currentId = o.id; currentOrderRef = o;
+  const ok = await saveOrders();
+  renderArchive();
+  toast(ok ? 'Cerere salvată' : 'Salvarea nu a reușit — exportă PDF ca să nu pierzi datele');
+};
+$('#btnSend').onclick = async ()=>{
+  const o = collect();
+  if(!o.magazin){ toast('Completează magazinul înainte de trimitere'); $('#magazin').focus(); return; }
+  if(!o.tasks.length){ toast('Adaugă cel puțin un task înainte de trimitere'); return; }
+  if(o.status==='nouă') o.status = 'trimisă';
+  const i = orders.findIndex(x=>x.id===o.id);
+  if(i>-1) orders[i]=o; else orders.unshift(o);
+  currentId = o.id; currentOrderRef = o;
+  const ok = await saveOrders();
+  renderArchive();
+  toast(ok ? 'Cerere trimisă tehnicianului' : 'Trimiterea nu a reușit');
+};
+function statusBadge(st){
+  const map = {'nouă':['st-noua','Nouă'],'trimisă':['st-trimisa','Trimisă'],'în lucru':['st-lucru','În lucru'],'finalizată':['st-finala','Finalizată']};
+  const [cls,label] = map[st] || map['nouă'];
+  return `<span class="badge ${cls}">${label}</span>`;
+}
+function renderArchive(){
+  const el = $('#archList');
+  if(!orders.length){ el.innerHTML = `<div class="empty">Nicio cerere salvată. Salvează una și apare aici.</div>`; return; }
+  el.innerHTML = '';
+  orders.slice(0,30).forEach(o=>{
+    const b = document.createElement('button');
+    b.className='arch-item';
+    const tp = (o.tipuri && o.tipuri.length) ? o.tipuri.join(', ') : (o.tip||'—');
+    b.innerHTML = `<div class="row1" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${escapeHtml(o.ticket)||'fără serie'}</b>${statusBadge(o.status)}</div>${escapeHtml(o.magazin||'Fără magazin')}<br><small>${o.data||''} · ${escapeHtml(tp)} · ${o.tasks.length} task(uri)</small>`;
+    b.onclick = ()=>{ load(o); toast('Cerere încărcată'); };
+    el.appendChild(b);
+  });
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ---------- PDF ---------- */
+function sheetHtml(o){
+  const rows = o.tasks.length
+    ? o.tasks.map((t,i)=>`<tr><td style="text-align:center;width:24px">${i+1}</td><td>${escapeHtml(t.desc)}</td><td style="width:19%">${escapeHtml(t.exec)||'—'}</td><td style="width:15%">${escapeHtml(t.term)||'—'}</td><td class="fill" style="width:62px"></td><td class="fill" style="width:62px"></td></tr>`).join('')
+    : `<tr><td colspan="6" style="text-align:center;color:#5A6875">Fără taskuri completate</td></tr>`;
+  const obs = o.observatii
+    ? `<div class="obs">${escapeHtml(o.observatii)}</div>`
+    : `<div class="obs lines">${'<div></div>'.repeat(5)}</div>`;
+  const sig = (img,rol,nume)=>`<div>
+      <div class="b">${img?`<img src="${img}">`:''}</div>
+      <p>${rol}<strong>${escapeHtml(nume)||'…………………………………'}</strong></p>
+      <p style="margin-top:4px">Data: ${escapeHtml(o.data||'')}</p>
+    </div>`;
+  return `
+  <div class="ph">
+    <div><h1>Fișă de intervenție</h1>
+      <div style="font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:#5A6875">Departament mentenanță</div>
+    </div>
+    <div class="no">Seria ${escapeHtml(o.ticket)||'…………'}</div>
+  </div>
+
+  <h3>Cererea chiriașului</h3>
+  <div class="kv">
+    <div><span>Magazin</span><b>${escapeHtml(o.magazin)||'—'}</b></div>
+    <div><span>Nivel</span><b>${escapeHtml(o.nivel)}</b></div>
+    <div><span>Persoană contact</span><b>${escapeHtml(o.contact)||'—'}</b></div>
+    <div><span>Telefon</span><b>${escapeHtml(o.telefon)||'—'}</b></div>
+    <div><span>Data / ora cererii</span><b>${escapeHtml(o.data)||'—'} ${escapeHtml(o.ora)||''}</b></div>
+    <div><span>Prioritate</span><b>${escapeHtml(o.prio)}</b></div>
+    <div style="grid-column:1/-1"><span>Începere lucrare (acces în magazin)</span><b>${escapeHtml(o.dataStart)||'…………'} ${escapeHtml(o.oraStart)||''}</b></div>
+    <div style="grid-column:1/-1"><span>Tip lucrare</span><b>${escapeHtml((o.tipuri||[]).join(' · '))||'—'}</b></div>
+  </div>
+  <div style="margin-top:12px"><span style="font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:#5A6875">Pentru ce este nevoia</span>
+    <div class="desc" style="margin-top:5px">${escapeHtml(o.nevoie)||'—'}</div>
+  </div>
+
+  <h3>Taskuri de executat</h3>
+  <table><thead><tr><th style="width:24px">#</th><th>Task</th><th>Alocat</th><th>Termen</th></tr></thead>
+  <tbody>${rows}</tbody></table>
+
+  <h3>Execuție lucrare</h3>
+  <div class="kv">
+    <div><span>Nr. persoane implicate</span><b>${escapeHtml(o.nrPersoane)||'—'}</b></div>
+    <div><span>Durată lucrare</span><b>${formatDurata(o.durataSec)}</b></div>
+    <div><span>Început lucrarea</span><b>${o.lucruStart ? new Date(o.lucruStart).toLocaleString('ro-RO') : '—'}</b></div>
+    <div><span>Finalizat lucrarea</span><b>${o.lucruStop ? new Date(o.lucruStop).toLocaleString('ro-RO') : '—'}</b></div>
+  </div>
+
+  <h3>Observații echipă mentenanță</h3>
+  ${obs}
+
+  <div class="sg">
+    ${sig(o.semnChirias,'Semnătură chiriaș',o.numeChirias)}
+    ${sig(o.semnTehnic,'Semnătură echipă mentenanță',o.numeTehnic)}
+  </div>
+
+  <div class="foot"><span>${o.ticket} · ${escapeHtml(o.magazin)||''}</span><span>Generat ${new Date().toLocaleString('ro-RO')}</span></div>`;
+}
+
+function formatDurata(sec){
+  sec = sec||0;
+  const h = Math.floor(sec/3600), m = Math.floor((sec%3600)/60);
+  if(!sec) return '—';
+  return h>0 ? `${h}h ${m}m` : `${m}m`;
+}
+const safeName = s => (s||'').replace(/[^\w\-]+/g,'_').replace(/^_+|_+$/g,'');
+async function buildPdfBlob(o){
+  $('#sheet').innerHTML = sheetHtml(o);
+  await new Promise(r=>setTimeout(r,120));
+  const canvas = await html2canvas($('#sheet'), {scale:2, backgroundColor:'#ffffff', useCORS:true});
+  const img = canvas.toDataURL('image/jpeg',0.94);
+  const { jsPDF } = window.jspdf;
+  const pdf = new jsPDF('p','mm','a4');
+  const pw = pdf.internal.pageSize.getWidth(), ph = pdf.internal.pageSize.getHeight();
+  const ih = canvas.height * pw / canvas.width;
+  let left = ih, pos = 0;
+  pdf.addImage(img,'JPEG',0,pos,pw,ih); left -= ph;
+  while(left > 0){ pos = left - ih; pdf.addPage(); pdf.addImage(img,'JPEG',0,pos,pw,ih); left -= ph; }
+  return pdf.output('blob');
+}
+async function downloadPdf(o, blob){
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `Fisa_${safeName(o.ticket)||'fara-serie'}_${safeName(o.magazin)||'cerere'}.pdf`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 4000);
+}
+async function sharePdf(o, blob){
+  const filename = `Fisa_${safeName(o.ticket)||'fara-serie'}_${safeName(o.magazin)||'cerere'}.pdf`;
+  const file = new File([blob], filename, {type:'application/pdf'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{
+      await navigator.share({files:[file], title:`Fișă intervenție ${o.ticket||''}`, text:`Fișă de intervenție — ${o.magazin||''}`});
+      return true;
+    }catch(e){ if(e.name==='AbortError') return false; }
+  }
+  await downloadPdf(o, blob);
+  return false;
+}
+$('#btnPdf').onclick = async ()=>{
+  const o = collect();
+  const btn = $('#btnPdf'); btn.disabled = true; btn.textContent = 'Se generează…';
+  try{
+    const blob = await buildPdfBlob(o);
+    await downloadPdf(o, blob);
+    toast('PDF generat');
+  }catch(e){
+    console.error(e); toast('Export eșuat — reîncarcă pagina și încearcă din nou');
+  }finally{ btn.disabled=false; btn.textContent='Export PDF'; }
+};
+
+/* ---------- toast ---------- */
+let tTimer;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on'); clearTimeout(tTimer); tTimer=setTimeout(()=>t.classList.remove('on'),2600); }
+
+/* ---------- role switching ---------- */
+let currentRole = 'dispecer';
+let openTechId = null;
+let tickTimer = null;
+const dispecerOnlyEls = ['#dispecerBarExtra','#btnNew','#btnSave','#btnSend','#btnPdf'].map(s=>$(s));
+$('#tabDispecer').onclick = ()=> setRole('dispecer');
+$('#tabTehnician').onclick = ()=> setRole('tehnician');
+function setRole(role){
+  currentRole = role;
+  $('#tabDispecer').classList.toggle('active', role==='dispecer');
+  $('#tabTehnician').classList.toggle('active', role==='tehnician');
+  $('#viewDispecer').style.display = role==='dispecer' ? '' : 'none';
+  $('#viewTehnician').style.display = role==='tehnician' ? '' : 'none';
+  dispecerOnlyEls.forEach(el=> el.style.display = role==='dispecer' ? '' : 'none');
+  if(role==='tehnician'){ openTechId = null; renderTechList(); }
+}
+
+/* ---------- technician: list ---------- */
+function renderTechList(){
+  $('#techDetail').style.display='none';
+  const el = $('#techList'); el.style.display='';
+  const active = orders.filter(o=> o.status==='trimisă' || o.status==='în lucru');
+  const done = orders.filter(o=> o.status==='finalizată').slice(0,10);
+  if(!active.length && !done.length){ el.innerHTML = `<div class="empty">Nicio cerere trimisă momentan.</div>`; return; }
+  const card = o => {
+    const tp = (o.tipuri && o.tipuri.length) ? o.tipuri.join(', ') : '—';
+    return `<div class="techcard" data-id="${o.id}">
+      <div class="row1"><b>${escapeHtml(o.magazin)||'Fără magazin'}</b>${statusBadge(o.status)}</div>
+      <small>${escapeHtml(o.ticket)||'fără serie'} · ${escapeHtml(tp)} · ${o.tasks.length} task(uri) · ${escapeHtml(o.prio)}</small>
+    </div>`;
+  };
+  el.innerHTML = active.map(card).join('') + (done.length ? `<div class="hint" style="margin-top:16px">Finalizate recent</div>${done.map(card).join('')}` : '');
+  el.querySelectorAll('.techcard').forEach(c=> c.onclick = ()=>{ openTechId = c.dataset.id; renderTechDetail(openTechId); });
+}
+
+/* ---------- technician: detail + timer ---------- */
+function renderTechDetail(id){
+  const o = orders.find(x=>x.id===id);
+  if(!o){ openTechId=null; renderTechList(); return; }
+  $('#techList').style.display='none';
+  const el = $('#techDetail'); el.style.display='';
+  const tp = (o.tipuri && o.tipuri.length) ? o.tipuri.join(', ') : '—';
+  const tasksHtml = o.tasks.length ? `<ul class="techtasks">${o.tasks.map(t=>`<li><b>${escapeHtml(t.desc)}</b><small>${escapeHtml(t.exec)||'Nealocat'} · ${escapeHtml(t.term)||'fără termen'}</small></li>`).join('')}</ul>` : `<div class="empty">Niciun task</div>`;
+
+  let actionHtml = '';
+  if(o.status==='trimisă'){
+    actionHtml = `
+      <div class="persrow"><label style="margin:0" for="techPers">Nr. persoane</label><input type="text" id="techPers" value="${escapeHtml(o.nrPersoane)}" placeholder="ex. 2"></div>
+      <button class="btn btn-start btn-block" id="btnStart">Start lucrarea</button>`;
+  } else if(o.status==='în lucru'){
+    actionHtml = `
+      <div class="timerlabel">Cronometru lucrare</div>
+      <div class="timerbig" id="timerDisplay">00:00:00</div>
+      <button class="btn btn-stop btn-block" id="btnStop">Finalizează lucrarea</button>`;
+  } else {
+    actionHtml = `
+      <div class="execbox">
+        <div class="kv2"><span>Nr. persoane</span><b>${escapeHtml(o.nrPersoane)||'—'}</b></div>
+        <div class="kv2"><span>Durată</span><b>${formatDurata(o.durataSec)}</b></div>
+        <div class="kv2"><span>Finalizat la</span><b>${o.lucruStop ? new Date(o.lucruStop).toLocaleString('ro-RO') : '—'}</b></div>
+      </div>
+      <button class="btn btn-blue btn-block" id="btnResend" style="margin-top:12px">Trimite din nou PDF-ul</button>`;
+  }
+
+  el.innerHTML = `
+    <button class="techback" id="btnTechBack">‹ Înapoi la listă</button>
+    <div class="card">
+      <div class="card-head"><h2>${escapeHtml(o.magazin)||'Fără magazin'}</h2>${statusBadge(o.status)}</div>
+      <div class="card-body">
+        <p class="hint">${escapeHtml(o.ticket)||'fără serie'} · ${escapeHtml(o.nivel)} · ${escapeHtml(tp)} · Prioritate ${escapeHtml(o.prio)}</p>
+        <div style="margin-bottom:14px"><b>Nevoia semnalată</b><div style="margin-top:4px">${escapeHtml(o.nevoie)||'—'}</div></div>
+        <div style="margin-bottom:14px"><b>Taskuri</b>${tasksHtml}</div>
+        ${actionHtml}
+      </div>
+    </div>`;
+
+  $('#btnTechBack').onclick = ()=>{ clearInterval(tickTimer); openTechId=null; renderTechList(); };
+
+  if(o.status==='trimisă'){
+    $('#btnStart').onclick = async ()=>{
+      const pers = $('#techPers').value.trim();
+      if(!pers){ toast('Completează numărul de persoane înainte de start'); $('#techPers').focus(); return; }
+      o.nrPersoane = pers; o.status = 'în lucru'; o.lucruStart = new Date().toISOString();
+      await saveOrders(); renderArchive(); renderTechDetail(o.id);
+      startTicking(o);
+    };
+  } else if(o.status==='în lucru'){
+    startTicking(o);
+    $('#btnStop').onclick = async ()=>{
+      clearInterval(tickTimer);
+      o.lucruStop = new Date().toISOString();
+      o.durataSec = Math.round((new Date(o.lucruStop) - new Date(o.lucruStart))/1000);
+      o.status = 'finalizată';
+      await saveOrders(); renderArchive(); renderTechDetail(o.id);
+      toast('Lucrare finalizată — se generează PDF-ul');
+      try{
+        const blob = await buildPdfBlob(o);
+        await sharePdf(o, blob);
+      }catch(e){ console.error(e); toast('PDF generat, dar exportul a eșuat — încearcă din nou din butonul de mai jos'); }
+    };
+  } else {
+    $('#btnResend').onclick = async ()=>{
+      const btn = $('#btnResend'); btn.disabled=true; btn.textContent='Se generează…';
+      try{ const blob = await buildPdfBlob(o); await sharePdf(o, blob); }
+      catch(e){ console.error(e); toast('Export eșuat'); }
+      finally{ btn.disabled=false; btn.textContent='Trimite din nou PDF-ul'; }
+    };
+  }
+}
+function startTicking(o){
+  clearInterval(tickTimer);
+  const disp = $('#timerDisplay');
+  if(!disp) return;
+  const tick = ()=>{
+    const sec = Math.max(0, Math.round((Date.now() - new Date(o.lucruStart).getTime())/1000));
+    const h = String(Math.floor(sec/3600)).padStart(2,'0');
+    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+    const s = String(sec%60).padStart(2,'0');
+    disp.textContent = `${h}:${m}:${s}`;
+  };
+  tick();
+  tickTimer = setInterval(tick, 1000);
+}
+
+/* ---------- init ---------- */
+pads.padChirias = initPad('padChirias');
+pads.padTehnic = initPad('padTehnic');
+reset();
+loadOrders();
+setInterval(loadOrders, 6000);
+</script>
+</body>
+</html>
