@@ -238,15 +238,16 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
 </div>
 <script>
 (function(){
-  var CODE = '2003';
+  var CODES = { '2003':'dispecer', '1234':'tehnician' };
   var gate = document.getElementById('pinGate');
-  if(localStorage.getItem('mee_pin_ok') === '1'){ gate.style.display = 'none'; return; }
+  if(localStorage.getItem('mee_role')){ gate.style.display = 'none'; return; }
   var input = document.getElementById('pinInput');
   var err = document.getElementById('pinErr');
   function tryUnlock(){
-    if(input.value.trim() === CODE){
-      localStorage.setItem('mee_pin_ok','1');
-      gate.style.display = 'none';
+    var role = CODES[input.value.trim()];
+    if(role){
+      localStorage.setItem('mee_role', role);
+      location.reload();
     } else {
       err.style.display = 'block';
       input.value = '';
@@ -748,8 +749,8 @@ let tickTimer = null;
 const dispecerOnlyEls = ['#dispecerBarExtra','#btnNew','#btnSave','#btnSend','#btnPdf'].map(s=>$(s));
 $('#tabDispecer').onclick = ()=> setRole('dispecer');
 $('#tabTehnician').onclick = ()=> setRole('tehnician');
-const urlParams = new URLSearchParams(location.search);
-const forcedTech = urlParams.get('rol') === 'tehnician';
+const meeRole = localStorage.getItem('mee_role');
+const forcedTech = meeRole === 'tehnician';
 if(forcedTech){ $('.roletabs').style.display = 'none'; }
 function setRole(role){
   currentRole = role;
