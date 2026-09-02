@@ -218,7 +218,12 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
 .execbox{border:1px solid var(--line);border-radius:2px;padding:14px;margin-top:16px;background:#F7F9FB}
 .execbox .kv2{display:flex;justify-content:space-between;padding:4px 0;font-size:13px}
 .execbox .kv2 span{color:var(--ink-soft)}
+@keyframes flashAlert{0%,100%{background:transparent}50%{background:#FDE8E4}}
+.flash-alert{animation:flashAlert .5s ease-in-out 2}
 </style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 
@@ -389,6 +394,20 @@ const STORE_KEY = 'maintenance:orders';
 let orders = [];
 let currentId = null;
 
+/* ---------- firebase ---------- */
+const firebaseConfig = {
+  apiKey: "AIzaSyCFrn0bHOijo-iPdt4S8_xzRHF0w87jwaE",
+  authDomain: "mentenanta-1eaf4.firebaseapp.com",
+  projectId: "mentenanta-1eaf4",
+  storageBucket: "mentenanta-1eaf4.firebasestorage.app",
+  messagingSenderId: "625117612139",
+  appId: "1:625117612139:web:ca32a4dbced5e652fd492e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const ordersDocRef = db.collection('app').doc('orders');
+let fbReady = false;
+
 /* ---------- tasks ---------- */
 function taskRow(t = {desc:'',exec:'',term:''}){
   const tr = document.createElement('tr');
@@ -526,16 +545,44 @@ $('#btnNew').onclick = ()=>{ reset(); toast('Cerere nouă pregătită'); };
 
 /* ---------- storage ---------- */
 async function loadOrders(){
+  // păstrată doar ca fallback manual — sincronizarea reală se face prin listenerul de mai jos
   try{
-    const r = await window.storage.get(STORE_KEY, true);
-    orders = r ? JSON.parse(r.value) : [];
-  }catch(e){ orders = []; }
+    const snap = await ordersDocRef.get();
+    orders = snap.exists ? (snap.data().list || []) : [];
+  }catch(e){ /* nu suprascriem orders local dacă citirea eșuează */ }
   renderArchive();
   if(currentRole==='tehnician'){ renderTechList(); if(openTechId) renderTechDetail(openTechId); }
 }
 async function saveOrders(){
-  try{ await window.storage.set(STORE_KEY, JSON.stringify(orders), true); return true; }
-  catch(e){ return false; }
+  try{ await ordersDocRef.set({list: orders}); return true; }
+  catch(e){ console.error(e); return false; }
+}
+let prevActiveIds = new Set();
+function attachOrdersListener(){
+  ordersDocRef.onSnapshot(snap=>{
+    orders = snap.exists ? (snap.data().list || []) : [];
+    const activeNow = new Set(orders.filter(o=>o.status==='trimisă'||o.status==='în lucru').map(o=>o.id));
+    let hasNew = false;
+    activeNow.forEach(id=>{ if(!prevActiveIds.has(id)) hasNew = true; });
+    prevActiveIds = activeNow;
+    renderArchive();
+    if(currentRole==='tehnician'){
+      renderTechList();
+      if(openTechId) renderTechDetail(openTechId);
+      if(hasNew) notifyNewCerere();
+    }
+  }, err=>{ console.error(err); toast('Sincronizarea a eșuat — verifică internetul'); });
+}
+function notifyNewCerere(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.value = 880; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.15, ctx.currentTime);
+    o.start(); o.stop(ctx.currentTime + 0.35);
+  }catch(e){}
+  const list = $('#techList');
+  if(list){ list.classList.add('flash-alert'); setTimeout(()=>list.classList.remove('flash-alert'), 1500); }
 }
 $('#btnSave').onclick = async ()=>{
   const o = collect();
@@ -825,9 +872,14 @@ function startTicking(o){
 pads.padChirias = initPad('padChirias');
 pads.padTehnic = initPad('padTehnic');
 reset();
-loadOrders();
-setInterval(loadOrders, 6000);
 if(forcedTech){ setRole('tehnician'); }
+firebase.auth().signInAnonymously().then(()=>{
+  fbReady = true;
+  attachOrdersListener();
+}).catch(err=>{
+  console.error(err);
+  toast('Conectarea la baza de date a eșuat — verifică internetul și reîncarcă pagina');
+});
 </script>
 </body>
 </html>
