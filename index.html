@@ -171,7 +171,6 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
 #sheet table{width:100%;border-collapse:collapse;margin-top:4px}
 #sheet th{background:#131A22;color:#fff;font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;text-transform:uppercase;padding:7px 8px;text-align:left}
 #sheet td{border:1px solid #C6D0D9;padding:8px;font-size:12px}
-#sheet td.fill{background:#FFFBEC;border-color:#131A22}
 #sheet .tblnote{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#5A6875;margin-bottom:5px}
 #sheet .obs{border:1px solid #131A22;padding:10px 12px;min-height:150px;white-space:pre-wrap}
 #sheet .lines div{border-bottom:1px solid #D8E0E6;height:26px}
@@ -618,12 +617,39 @@ function renderArchive(){
   if(!orders.length){ el.innerHTML = `<div class="empty">Nicio cerere salvată. Salvează una și apare aici.</div>`; return; }
   el.innerHTML = '';
   orders.slice(0,30).forEach(o=>{
-    const b = document.createElement('button');
+    const b = document.createElement('div');
     b.className='arch-item';
+    b.tabIndex = 0;
+    b.setAttribute('role','button');
     const tp = (o.tipuri && o.tipuri.length) ? o.tipuri.join(', ') : (o.tip||'—');
-    b.innerHTML = `<div class="row1" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${escapeHtml(o.ticket)||'fără serie'}</b>${statusBadge(o.status)}</div>${escapeHtml(o.magazin||'Fără magazin')}<br><small>${o.data||''} · ${escapeHtml(tp)} · ${o.tasks.length} task(uri)</small>`;
-    b.onclick = ()=>{ load(o); toast('Cerere încărcată'); };
+    b.innerHTML = `<div class="row1" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px"><b>${escapeHtml(o.ticket)||'fără serie'}</b><div style="display:flex;align-items:center;gap:6px">${statusBadge(o.status)}</div></div>${escapeHtml(o.magazin||'Fără magazin')}<br><small>${o.data||''} · ${escapeHtml(tp)} · ${o.tasks.length} task(uri)</small>`;
+    const open = ()=>{ load(o); toast('Cerere încărcată'); };
+    b.onclick = open;
+    b.onkeydown = e=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); open(); } };
+    const del = document.createElement('button');
+    del.className = 'del';
+    del.title = 'Șterge cererea';
+    del.textContent = '×';
+    del.onclick = e=>{ e.stopPropagation(); deleteOrder(del, o); };
+    b.querySelector('.row1 > div').appendChild(del);
     el.appendChild(b);
+  });
+}
+function deleteOrder(btn, o){
+  if(!btn.dataset.armed){
+    btn.dataset.armed = '1';
+    btn.textContent = '✓';
+    btn.title = 'Apasă din nou pentru a confirma ștergerea';
+    clearTimeout(btn._delTimer);
+    btn._delTimer = setTimeout(()=>{ delete btn.dataset.armed; btn.textContent = '×'; btn.title = 'Șterge cererea'; }, 3000);
+    return;
+  }
+  clearTimeout(btn._delTimer);
+  orders = orders.filter(x=>x.id!==o.id);
+  if(currentId===o.id) reset();
+  saveOrders().then(ok=>{
+    renderArchive();
+    toast(ok ? 'Cerere ștearsă' : 'Ștergerea nu a reușit — verifică internetul');
   });
 }
 function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -631,8 +657,8 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&
 /* ---------- PDF ---------- */
 function sheetHtml(o){
   const rows = o.tasks.length
-    ? o.tasks.map((t,i)=>`<tr><td style="text-align:center;width:24px">${i+1}</td><td>${escapeHtml(t.desc)}</td><td style="width:19%">${escapeHtml(t.exec)||'—'}</td><td style="width:15%">${escapeHtml(t.term)||'—'}</td><td class="fill" style="width:62px"></td><td class="fill" style="width:62px"></td></tr>`).join('')
-    : `<tr><td colspan="6" style="text-align:center;color:#5A6875">Fără taskuri completate</td></tr>`;
+    ? o.tasks.map((t,i)=>`<tr><td style="text-align:center;width:24px">${i+1}</td><td>${escapeHtml(t.desc)}</td><td style="width:19%">${escapeHtml(t.exec)||'—'}</td><td style="width:15%">${escapeHtml(t.term)||'—'}</td></tr>`).join('')
+    : `<tr><td colspan="4" style="text-align:center;color:#5A6875">Fără taskuri completate</td></tr>`;
   const obs = o.observatii
     ? `<div class="obs">${escapeHtml(o.observatii)}</div>`
     : `<div class="obs lines">${'<div></div>'.repeat(5)}</div>`;
