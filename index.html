@@ -180,7 +180,7 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
 #sheet .tblnote{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:#5A6875;margin-bottom:5px}
 #sheet .obs{border:1px solid #131A22;padding:10px 12px;min-height:150px;white-space:pre-wrap}
 #sheet .lines div{border-bottom:1px solid #D8E0E6;height:26px}
-#sheet .sg{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:24px}
+#sheet .sg{display:grid;grid-template-columns:1fr;max-width:340px;margin-top:24px}
 #sheet .sg .b{border:1px solid #C6D0D9;height:118px;display:flex;align-items:center;justify-content:center;background:#fff}
 #sheet .sg img{max-height:104px;max-width:96%}
 #sheet .sg p{margin:6px 0 0;font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;color:#5A6875}
@@ -327,10 +327,6 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
         </div>
         <p class="hint">„Data / ora începerii" = intervalul în care echipa are acces în magazin.</p>
         <div style="margin-bottom:14px">
-          <label for="numeChirias">Nume chiriaș <span style="text-transform:none;letter-spacing:0">(pentru semnătura de pe fișa tipărită)</span></label>
-          <input type="text" id="numeChirias" placeholder="Nume și prenume">
-        </div>
-        <div style="margin-bottom:14px">
           <label>Prioritate</label>
           <div class="pills">
             <label class="pill urg"><input type="radio" name="prio" value="Urgent"><span>Urgent</span></label>
@@ -353,15 +349,6 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
       <div class="card-body">
         <p class="hint">Împarte cererea în lucrări concrete. Fiecare rând ajunge ca linie separată în PDF.</p>
         <div id="taskWrap"></div>
-      </div>
-    </section>
-
-    <!-- 3. OBSERVATII -->
-    <section class="card">
-      <div class="card-head"><div class="step">3</div><h2>Observații echipă mentenanță</h2></div>
-      <div class="card-body">
-        <p class="hint">Lasă gol dacă vrei ca echipa să scrie de mână — în PDF apare un chenar cu linii.</p>
-        <textarea id="observatii" placeholder="Se completează de către tehnician la finalizarea lucrării…"></textarea>
       </div>
     </section>
 
@@ -496,8 +483,7 @@ function collect(){
     prio: document.querySelector('input[name=prio]:checked').value,
     nevoie: $('#nevoie').value.trim(),
     tasks: getTasks(),
-    observatii: $('#observatii').value.trim(),
-    numeChirias: $('#numeChirias').value.trim(),
+    observatii: (currentOrderRef && currentOrderRef.observatii) || '',
     numeTehnic: (currentOrderRef && currentOrderRef.numeTehnic) || '',
     semnTehnic: (currentOrderRef && currentOrderRef.semnTehnic) || '',
     savedAt: new Date().toISOString(),
@@ -518,15 +504,14 @@ function load(o){
   $('#data').value=o.data||''; $('#ora').value=o.ora||'';
   $('#dataStart').value=o.dataStart||''; $('#oraStart').value=o.oraStart||'';
   const r = document.querySelector(`input[name=prio][value="${o.prio||'Normal'}"]`); if(r) r.checked = true;
-  $('#nevoie').value=o.nevoie||''; $('#observatii').value=o.observatii||'';
-  $('#numeChirias').value=o.numeChirias||'';
+  $('#nevoie').value=o.nevoie||'';
   $('#taskWrap').innerHTML=''; (o.tasks&&o.tasks.length ? o.tasks : []).forEach(addTask); renumber();
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function reset(){
   currentId = null; currentOrderRef = null;
   $('#ticketInput').value = '';
-  ['magazin','contact','telefon','nevoie','observatii','numeChirias','dataStart','oraStart'].forEach(i=>$('#'+i).value='');
+  ['magazin','contact','telefon','nevoie','dataStart','oraStart'].forEach(i=>$('#'+i).value='');
   setTipuri([]);
   const now = new Date();
   $('#data').value = now.toISOString().slice(0,10);
@@ -697,7 +682,6 @@ function sheetHtml(o){
   ${obs}
 
   <div class="sg">
-    ${sig(o.semnChirias,'Semnătură chiriaș',o.numeChirias)}
     ${sig(o.semnTehnic,'Semnătură echipă mentenanță',o.numeTehnic)}
   </div>
 
@@ -857,6 +841,11 @@ function renderTechDetail(id){
     actionHtml = `
       <div class="timerlabel">Cronometru lucrare</div>
       <div class="timerbig" id="timerDisplay">00:00:00</div>
+      <div style="margin:16px 0">
+        <label for="observatii">Observații</label>
+        <p class="hint">Lasă gol dacă vrei să scrii de mână pe fișa tipărită — apare un chenar cu linii în PDF.</p>
+        <textarea id="observatii" placeholder="Ce s-a făcut, piese folosite, recomandări…">${escapeHtml(o.observatii||'')}</textarea>
+      </div>
       <div class="sigbox" style="margin:16px 0">
         <header><b>Semnătură mentenanță</b><button class="clear" id="btnClearTechSig">Șterge</button></header>
         <canvas class="pad" id="padTehnicTech"></canvas>
@@ -941,6 +930,7 @@ function renderTechDetail(id){
       });
       o.numeTehnic = numeTehnic;
       o.semnTehnic = techSigPad.data();
+      o.observatii = $('#observatii').value.trim();
       o.lucruStop = new Date().toISOString();
       o.durataSec = Math.round((new Date(o.lucruStop) - new Date(o.lucruStart))/1000);
       o.status = 'finalizată';
