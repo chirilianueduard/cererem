@@ -139,8 +139,6 @@ tbody td input:hover{border-color:var(--line)}
 .empty{padding:24px;text-align:center;color:var(--ink-soft);border:1px dashed var(--line);border-radius:2px}
 
 /* signatures */
-.sigs{display:grid;grid-template-columns:1fr 1fr;gap:18px}
-@media(max-width:640px){.sigs{grid-template-columns:1fr}}
 .sigbox{border:1px solid var(--line);border-radius:2px;overflow:hidden;background:#FCFDFE}
 .sigbox header{display:flex;justify-content:space-between;align-items:center;padding:9px 12px;background:#F2F5F8;border-bottom:1px solid var(--line)}
 .sigbox header b{font-family:var(--display);font-size:15px;letter-spacing:.06em;text-transform:uppercase;font-weight:600}
@@ -215,6 +213,7 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
 .techtasks li:last-child{border-bottom:0}
 .techtasks b{display:block;font-size:14px}
 .techtasks small{color:var(--ink-soft)}
+.tasktimer{font-family:var(--mono);font-size:12px;color:var(--ink-soft);margin-bottom:4px;white-space:nowrap}
 .timerbig{font-family:var(--mono);font-weight:600;font-size:48px;text-align:center;padding:18px 0 6px;letter-spacing:.02em}
 .timerlabel{text-align:center;font-family:var(--mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-soft);margin-bottom:14px}
 .btn-start{background:var(--green);color:#fff}
@@ -328,6 +327,10 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
         </div>
         <p class="hint">„Data / ora începerii" = intervalul în care echipa are acces în magazin.</p>
         <div style="margin-bottom:14px">
+          <label for="numeChirias">Nume chiriaș <span style="text-transform:none;letter-spacing:0">(pentru semnătura de pe fișa tipărită)</span></label>
+          <input type="text" id="numeChirias" placeholder="Nume și prenume">
+        </div>
+        <div style="margin-bottom:14px">
           <label>Prioritate</label>
           <div class="pills">
             <label class="pill urg"><input type="radio" name="prio" value="Urgent"><span>Urgent</span></label>
@@ -362,24 +365,6 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
       </div>
     </section>
 
-    <!-- 4. SEMNATURI -->
-    <section class="card">
-      <div class="card-head"><div class="step">4</div><h2>Semnături</h2></div>
-      <div class="card-body">
-        <div class="sigs">
-          <div class="sigbox">
-            <header><b>Chiriaș</b><button class="clear" data-clear="padChirias">Șterge</button></header>
-            <canvas class="pad" id="padChirias"></canvas>
-            <footer><label for="numeChirias">Nume în clar</label><input type="text" id="numeChirias" placeholder="Nume și prenume"></footer>
-          </div>
-          <div class="sigbox">
-            <header><b>Mentenanță</b><button class="clear" data-clear="padTehnic">Șterge</button></header>
-            <canvas class="pad" id="padTehnic"></canvas>
-            <footer><label for="numeTehnic">Nume tehnician</label><input type="text" id="numeTehnic" placeholder="Nume și prenume"></footer>
-          </div>
-        </div>
-      </div>
-    </section>
   </div>
 
   <!-- ARHIVA -->
@@ -449,10 +434,13 @@ function renumber(){
   if(!rows.length) $('#taskWrap').innerHTML = `<div class="empty">Niciun task încă. Apasă „+ Adaugă task”.</div>`;
 }
 function getTasks(){
-  return [...document.querySelectorAll('#taskBody tr')].map(r=>({
+  const existing = (currentOrderRef && currentOrderRef.tasks) || [];
+  return [...document.querySelectorAll('#taskBody tr')].map((r,i)=>({
     desc:r.querySelector('.t-desc').value.trim(),
     exec:r.querySelector('.t-exec').value.trim(),
-    term:r.querySelector('.t-term').value.trim()
+    term:r.querySelector('.t-term').value.trim(),
+    start: (existing[i] && existing[i].start) || null,
+    durataSec: (existing[i] && existing[i].durataSec) || 0
   })).filter(t=>t.desc||t.exec||t.term);
 }
 $('#btnAddTask').onclick = ()=> addTask();
@@ -483,8 +471,6 @@ function initPad(id){
     load(d){ if(!d){this.clear();return;} const img=new Image(); img.onload=()=>{ const r=c.getBoundingClientRect(); ctx.clearRect(0,0,c.width,c.height); ctx.drawImage(img,0,0,r.width,r.height); empty=false; }; img.src=d; }
   };
 }
-const pads = { padChirias:null, padTehnic:null };
-document.querySelectorAll('[data-clear]').forEach(b=> b.onclick = ()=> pads[b.dataset.clear].clear());
 
 /* ---------- form state ---------- */
 function getTipuri(){
@@ -512,9 +498,8 @@ function collect(){
     tasks: getTasks(),
     observatii: $('#observatii').value.trim(),
     numeChirias: $('#numeChirias').value.trim(),
-    numeTehnic: $('#numeTehnic').value.trim(),
-    semnChirias: pads.padChirias.data(),
-    semnTehnic: pads.padTehnic.data(),
+    numeTehnic: (currentOrderRef && currentOrderRef.numeTehnic) || '',
+    semnTehnic: (currentOrderRef && currentOrderRef.semnTehnic) || '',
     savedAt: new Date().toISOString(),
     status: (currentOrderRef && currentOrderRef.status) || 'nouă',
     nrPersoane: (currentOrderRef && currentOrderRef.nrPersoane) || '',
@@ -534,21 +519,19 @@ function load(o){
   $('#dataStart').value=o.dataStart||''; $('#oraStart').value=o.oraStart||'';
   const r = document.querySelector(`input[name=prio][value="${o.prio||'Normal'}"]`); if(r) r.checked = true;
   $('#nevoie').value=o.nevoie||''; $('#observatii').value=o.observatii||'';
-  $('#numeChirias').value=o.numeChirias||''; $('#numeTehnic').value=o.numeTehnic||'';
+  $('#numeChirias').value=o.numeChirias||'';
   $('#taskWrap').innerHTML=''; (o.tasks&&o.tasks.length ? o.tasks : []).forEach(addTask); renumber();
-  pads.padChirias.load(o.semnChirias); pads.padTehnic.load(o.semnTehnic);
   window.scrollTo({top:0,behavior:'smooth'});
 }
 function reset(){
   currentId = null; currentOrderRef = null;
   $('#ticketInput').value = '';
-  ['magazin','contact','telefon','nevoie','observatii','numeChirias','numeTehnic','dataStart','oraStart'].forEach(i=>$('#'+i).value='');
+  ['magazin','contact','telefon','nevoie','observatii','numeChirias','dataStart','oraStart'].forEach(i=>$('#'+i).value='');
   setTipuri([]);
   const now = new Date();
   $('#data').value = now.toISOString().slice(0,10);
   $('#ora').value = now.toTimeString().slice(0,5);
   $('#taskWrap').innerHTML=''; addTask(); addTask();
-  pads.padChirias.clear(); pads.padTehnic.clear();
 }
 $('#btnNew').onclick = ()=>{ reset(); toast('Cerere nouă pregătită'); };
 
@@ -665,8 +648,8 @@ function escapeHtml(s){ return (s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&
 /* ---------- PDF ---------- */
 function sheetHtml(o){
   const rows = o.tasks.length
-    ? o.tasks.map((t,i)=>`<tr><td style="text-align:center;width:24px">${i+1}</td><td>${escapeHtml(t.desc)}</td><td style="width:19%">${escapeHtml(t.exec)||'—'}</td><td style="width:15%">${escapeHtml(t.term)||'—'}</td></tr>`).join('')
-    : `<tr><td colspan="4" style="text-align:center;color:#5A6875">Fără taskuri completate</td></tr>`;
+    ? o.tasks.map((t,i)=>`<tr><td style="text-align:center;width:24px">${i+1}</td><td>${escapeHtml(t.desc)}</td><td style="width:17%">${escapeHtml(t.exec)||'—'}</td><td style="width:14%">${escapeHtml(t.term)||'—'}</td><td style="width:13%">${formatDurata(t.durataSec)}</td></tr>`).join('')
+    : `<tr><td colspan="5" style="text-align:center;color:#5A6875">Fără taskuri completate</td></tr>`;
   const obs = o.observatii
     ? `<div class="obs">${escapeHtml(o.observatii)}</div>`
     : `<div class="obs lines">${'<div></div>'.repeat(5)}</div>`;
@@ -699,7 +682,7 @@ function sheetHtml(o){
   </div>
 
   <h3>Taskuri de executat</h3>
-  <table><thead><tr><th style="width:24px">#</th><th>Task</th><th>Alocat</th><th>Termen</th></tr></thead>
+  <table><thead><tr><th style="width:24px">#</th><th>Task</th><th>Alocat</th><th>Termen</th><th>Durată</th></tr></thead>
   <tbody>${rows}</tbody></table>
 
   <h3>Execuție lucrare</h3>
@@ -781,6 +764,8 @@ function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('on
 let currentRole = 'dispecer';
 let openTechId = null;
 let tickTimer = null;
+let taskTickTimers = {};
+let techSigPad = null;
 const dispecerOnlyEls = ['#dispecerBarExtra','#btnNew','#btnSave','#btnSend','#btnPdf'].map(s=>$(s));
 $('#tabDispecer').onclick = ()=> setRole('dispecer');
 $('#tabTehnician').onclick = ()=> setRole('tehnician');
@@ -830,13 +815,38 @@ function renderTechList(){
 }
 
 /* ---------- technician: detail + timer ---------- */
+function fmtHMS(sec){
+  sec = Math.max(0, Math.round(sec||0));
+  const h = String(Math.floor(sec/3600)).padStart(2,'0');
+  const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
+  const s = String(sec%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+function clearTaskTimers(){
+  Object.values(taskTickTimers).forEach(clearInterval);
+  taskTickTimers = {};
+}
 function renderTechDetail(id){
+  clearTaskTimers();
   const o = orders.find(x=>x.id===id);
   if(!o){ openTechId=null; renderTechList(); return; }
   $('#techList').style.display='none';
   const el = $('#techDetail'); el.style.display='';
   const tp = (o.tipuri && o.tipuri.length) ? o.tipuri.join(', ') : '—';
-  const tasksHtml = o.tasks.length ? `<ul class="techtasks">${o.tasks.map(t=>`<li><b>${escapeHtml(t.desc)}</b><small>${escapeHtml(t.exec)||'Nealocat'} · ${escapeHtml(t.term)||'fără termen'}</small></li>`).join('')}</ul>` : `<div class="empty">Niciun task</div>`;
+  const canTime = o.status === 'în lucru';
+  const tasksHtml = o.tasks.length ? `<ul class="techtasks">${o.tasks.map((t,i)=>{
+    const running = !!t.start;
+    const elapsed = (t.durataSec||0) + (running ? Math.max(0,Math.round((Date.now()-new Date(t.start).getTime())/1000)) : 0);
+    return `<li>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px">
+        <div><b>${escapeHtml(t.desc)}</b><small>${escapeHtml(t.exec)||'Nealocat'} · ${escapeHtml(t.term)||'fără termen'}</small></div>
+        <div style="text-align:right;flex-shrink:0">
+          <div class="tasktimer" id="taskTimer-${i}">${fmtHMS(elapsed)}</div>
+          ${canTime ? `<button class="btn ${running?'btn-stop':'btn-start'} tasktimerbtn" data-idx="${i}" style="padding:6px 10px;font-size:11px">${running?'Oprește':'Pornește'}</button>` : ''}
+        </div>
+      </div>
+    </li>`;
+  }).join('')}</ul>` : `<div class="empty">Niciun task</div>`;
 
   let actionHtml = '';
   if(o.status==='trimisă'){
@@ -847,6 +857,11 @@ function renderTechDetail(id){
     actionHtml = `
       <div class="timerlabel">Cronometru lucrare</div>
       <div class="timerbig" id="timerDisplay">00:00:00</div>
+      <div class="sigbox" style="margin:16px 0">
+        <header><b>Semnătură mentenanță</b><button class="clear" id="btnClearTechSig">Șterge</button></header>
+        <canvas class="pad" id="padTehnicTech"></canvas>
+        <footer><label for="numeTehnic">Nume tehnician</label><input type="text" id="numeTehnic" value="${escapeHtml(o.numeTehnic)}" placeholder="Nume și prenume"></footer>
+      </div>
       <button class="btn btn-stop btn-block" id="btnStop">Finalizează lucrarea</button>`;
   } else {
     actionHtml = `
@@ -870,7 +885,34 @@ function renderTechDetail(id){
       </div>
     </div>`;
 
-  $('#btnTechBack').onclick = ()=>{ clearInterval(tickTimer); openTechId=null; renderTechList(); };
+  $('#btnTechBack').onclick = ()=>{ clearInterval(tickTimer); clearTaskTimers(); openTechId=null; renderTechList(); };
+
+  if(canTime){
+    o.tasks.forEach((t,i)=>{
+      if(t.start){
+        const disp = document.getElementById(`taskTimer-${i}`);
+        if(!disp) return;
+        const base = t.durataSec||0;
+        const startedAt = new Date(t.start).getTime();
+        const tick = ()=> disp.textContent = fmtHMS(base + Math.max(0,Math.round((Date.now()-startedAt)/1000)));
+        tick();
+        taskTickTimers[i] = setInterval(tick, 1000);
+      }
+    });
+    el.querySelectorAll('.tasktimerbtn').forEach(btn=>{
+      btn.onclick = async ()=>{
+        const i = Number(btn.dataset.idx);
+        const t = o.tasks[i];
+        if(t.start){
+          t.durataSec = (t.durataSec||0) + Math.max(0, Math.round((Date.now()-new Date(t.start).getTime())/1000));
+          t.start = null;
+        } else {
+          t.start = new Date().toISOString();
+        }
+        await saveOrders(); renderArchive(); renderTechDetail(o.id);
+      };
+    });
+  }
 
   if(o.status==='trimisă'){
     $('#btnStart').onclick = async ()=>{
@@ -882,8 +924,23 @@ function renderTechDetail(id){
     };
   } else if(o.status==='în lucru'){
     startTicking(o);
+    techSigPad = initPad('padTehnicTech');
+    if(o.semnTehnic) techSigPad.load(o.semnTehnic);
+    $('#btnClearTechSig').onclick = ()=> techSigPad.clear();
     $('#btnStop').onclick = async ()=>{
+      const numeTehnic = $('#numeTehnic').value.trim();
+      if(!numeTehnic){ toast('Completează numele tehnicianului înainte de finalizare'); $('#numeTehnic').focus(); return; }
+      if(techSigPad.isEmpty()){ toast('Semnătura mentenanță e obligatorie înainte de finalizare'); return; }
       clearInterval(tickTimer);
+      clearTaskTimers();
+      o.tasks.forEach(t=>{
+        if(t.start){
+          t.durataSec = (t.durataSec||0) + Math.max(0, Math.round((Date.now()-new Date(t.start).getTime())/1000));
+          t.start = null;
+        }
+      });
+      o.numeTehnic = numeTehnic;
+      o.semnTehnic = techSigPad.data();
       o.lucruStop = new Date().toISOString();
       o.durataSec = Math.round((new Date(o.lucruStop) - new Date(o.lucruStart))/1000);
       o.status = 'finalizată';
@@ -907,20 +964,12 @@ function startTicking(o){
   clearInterval(tickTimer);
   const disp = $('#timerDisplay');
   if(!disp) return;
-  const tick = ()=>{
-    const sec = Math.max(0, Math.round((Date.now() - new Date(o.lucruStart).getTime())/1000));
-    const h = String(Math.floor(sec/3600)).padStart(2,'0');
-    const m = String(Math.floor((sec%3600)/60)).padStart(2,'0');
-    const s = String(sec%60).padStart(2,'0');
-    disp.textContent = `${h}:${m}:${s}`;
-  };
+  const tick = ()=> disp.textContent = fmtHMS(Math.round((Date.now() - new Date(o.lucruStart).getTime())/1000));
   tick();
   tickTimer = setInterval(tick, 1000);
 }
 
 /* ---------- init ---------- */
-pads.padChirias = initPad('padChirias');
-pads.padTehnic = initPad('padTehnic');
 reset();
 if(forcedTech){ setRole('tehnician'); }
 firebase.auth().signInAnonymously().then(()=>{
