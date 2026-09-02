@@ -275,6 +275,7 @@ canvas.pad{display:block;width:100%;height:150px;background:#fff;touch-action:no
     <button class="btn btn-blue" id="btnSave">Salvează</button>
     <button class="btn btn-main" id="btnSend">Trimite tehnicianului</button>
     <button class="btn btn-blue" id="btnPdf">Export PDF</button>
+    <button class="btn btn-ghost" id="btnSwitchRole" title="Șterge codul salvat pe acest dispozitiv">Schimbă rolul</button>
   </div>
 </div>
 
@@ -752,6 +753,20 @@ $('#tabTehnician').onclick = ()=> setRole('tehnician');
 const meeRole = localStorage.getItem('mee_role');
 const forcedTech = meeRole === 'tehnician';
 if(forcedTech){ $('.roletabs').style.display = 'none'; }
+let switchArmed = false, switchTimer;
+$('#btnSwitchRole').onclick = ()=>{
+  const btn = $('#btnSwitchRole');
+  if(!switchArmed){
+    switchArmed = true;
+    btn.textContent = 'Sigur? Apasă din nou';
+    clearTimeout(switchTimer);
+    switchTimer = setTimeout(()=>{ switchArmed = false; btn.textContent = 'Schimbă rolul'; }, 3000);
+    return;
+  }
+  clearTimeout(switchTimer);
+  localStorage.removeItem('mee_role');
+  location.reload();
+};
 function setRole(role){
   currentRole = role;
   $('#tabDispecer').classList.toggle('active', role==='dispecer');
